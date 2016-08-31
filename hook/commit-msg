@@ -1,0 +1,54 @@
+#!/usr/bin/python
+# encoding = utf8
+import re
+import sys
+from redmine import Redmine
+reload(sys)
+sys.setdefaultencoding("utf-8")
+redmineUrl = 'http://10.0.0.35:88'
+userName = ''
+pwd = ''
+def getIssues():
+    issueAll = []
+    for proj in server.projects:
+         issueAll += proj.issues   
+    print issueAll
+
+def getIssueid(msg):
+    regex = '#[0-9]+:'
+    num = re.search(regex, msg).span()
+    return msg[num[0]+1:num[1]-1]
+
+def getMessage():
+    fl = sys.argv[1]
+    print fl
+    fo = open(fl, "r")
+    message = fo.read()
+    fo.close()
+    return message
+
+def getNote(msg):
+    regex = ':'
+    num = re.search(regex, msg).span()
+    return msg[num[1]:]
+
+server = Redmine(redmineUrl, username=userName, password=pwd, version=3.1)
+message = getMessage()
+regEx = '^(?:Fix|Issue|Feature)\s#[0-9]+:'
+
+if not re.findall(regEx, message):
+    print "[POLICY] Your message is not formatted correctly"
+    sys.exit(1) 
+
+try:
+  issue = server.issues[int(getIssueid(message))]
+except Exception, exc:
+    print "match Id exception %s" %exc
+    sys.exit(1)
+
+if issue.status.__str__() == 'Closed':
+    print "Issue is closed, commit error"
+    sys.exit(1)
+else: 
+    issue.set_status(issue.id, "[Git note]:%s" %getNote(message))
+    print "commit Successful!"
